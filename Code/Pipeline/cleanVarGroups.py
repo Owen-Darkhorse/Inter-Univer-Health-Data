@@ -88,10 +88,10 @@ class hrsSet:
         print(self.Wave[allOccs].head(10))
 
         ## Take the most common occupation grouping across all waves as the final occupation
-        self.Wave["RwJOCCSD"] = self.Wave[allOccs].apply(lambda x: x.mode()[0] if not x.mode().empty else np.nan, 
-                                                         axis=0)  
+        self.Wave["RwJOCCSD"] = self.Wave[allOccs].apply(lambda x: x.mode() if not x.mode().empty else np.nan, 
+                                                         axis=1)  
         print(self.Wave["RwJOCCSD"].head(10))      
-        ## Drop the old occupation columns if they exist
+        # ## Drop the old occupation columns if they exist
         self.Wave.drop(columns=allOccs, inplace=True)
                 
         return None
