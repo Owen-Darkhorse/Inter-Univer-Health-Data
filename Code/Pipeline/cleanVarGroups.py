@@ -3,6 +3,7 @@
 ## This is a class of operations
 import pandas as pd
 import numpy as np
+import Pipeline.occupationLookUp as occLookUp
 
 class hrsSet:
     def __init__(self, hrsAll, hrsWave):
@@ -21,8 +22,7 @@ class hrsSet:
             if var in self.Wave.columns:
                 self.Wave[var] = self.Wave[var].apply(lambda x: 
                                                       np.log1p(np.add(x, 1)) 
-                                                      if pd.notnull(x) else x)
-        
+                                                      if pd.notnull(x) else x)        
         return None
 
 
@@ -63,7 +63,7 @@ class hrsSet:
         
         return None
     
-    def rewriteOccupations(self, occupationMap, occVarList):
+    def groupOccupations(self):
         """
         Creates the new column in self.Wave called "RwJOCCSD", with all occupations 
         Drop the old occupation column list "RwOCC" if it exists.
@@ -72,9 +72,28 @@ class hrsSet:
         Parameters:
         occupationMap (dict): A dictionary mapping old occupation codes to new labels.
         """
-        self.Wave["RwJOCCSD"] = self.Wave[occVarList].map(occupationMap)
-        self.Wave.drop(columns=occVarList, inplace=True, errors='ignore')
+        ## Map numbers to occupation names in different census years
+        self.Wave["RwJCOCC"] = self.Wave["RwJCOCC"].map(occLookUp.occupation_1980)
+        self.Wave["RwJCOCCA"] = self.Wave["RwJCOCCA"].map(occLookUp.occupation_ahead)
+        self.Wave["RwJCOCCB"] = self.Wave["RwJCOCCB"].map(occLookUp.occupation_2000)
+        self.Wave["RwJCOCCC"] = self.Wave["RwJCOCCC"].map(occLookUp.occupation_2010)
         
+        ## Map occupation codes to standardized groups
+        allOccs = ["RwJCOCC", "RwJCOCCA", "RwJCOCCB", "RwJCOCCC"]
+        self.Wave[allOccs] = self.Wave[allOccs].apply(
+            lambda x: x.map(occLookUp.codeToGroup),
+            axis=0
+        )
+        print("Occupation codes across waves are:")
+        print(self.Wave[allOccs].head(10))
+
+        ## Take the most common occupation grouping across all waves as the final occupation
+        self.Wave["RwJOCCSD"] = self.Wave[allOccs].apply(lambda x: x.mode()[0] if not x.mode().empty else np.nan, 
+                                                         axis=0)  
+        print(self.Wave["RwJOCCSD"].head(10))      
+        ## Drop the old occupation columns if they exist
+        self.Wave.drop(columns=allOccs, inplace=True)
+                
         return None
         
     def dealNAs(self, varList, fillValue=0):

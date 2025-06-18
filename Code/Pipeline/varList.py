@@ -113,4 +113,4 @@ def selectMetricforAll(varWave, hrsColumns):
 
 varComplete = selectMetricforAll(varWave, hrsColumns)
 
-print(varComplete[:10])
+# print(varComplete[:10])
