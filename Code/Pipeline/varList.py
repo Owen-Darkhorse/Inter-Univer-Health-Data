@@ -39,7 +39,22 @@ demographics = ["RAGENDER", # Reference person gender
 ] # sample cohort] # Reference person number of children ever born]
 
 funcLimits = [
-    "RwHLHLM", # W1 R reports health limitation
+    # Phyiscal limitations
+    "REBEDRID", # whether the Respondent was bedridden in the last three months of life. p858 [catgeorical variable]
+    "RwWALKR", # Diff-Walk across room. p878,905 [catgeorical variable]
+    "RwDRESS", # Diff-Dressing. p883 [catgeorical variable]
+    "RwBATH", # Diff-Bathing or showering. p887 [catgeorical variable]
+    "RwEAT", # Diff-Eating. p891 [catgeorical variable]
+    "RwBED", # Diff-Get in/out of bed. p895 [catgeorical variable]
+    "RwTOILT", #Diff-Using the toilet. p900 [catgeorical variable]
+    "RwMEALS", # Diff-Preparing hot meals
+
+    ## Cognitive limitations
+    "RwMAP", # Diff-Use a map. p950 [catgeorical variable]
+    "RwPHONE", # Diff-Use telephone(no data for wave 1 but good for wave 2 to 16) p954 [catgeorical variable]
+    "RwMONEY", # Diff-Managing money(no data for wave 1 but good for wave 2 to 16) p958 [catgeorical variable]
+    "RwMEDS", # Diff-Take medications(no data for wave 1 but good for wave 2 to 16) p961 [catgeorical variable]
+    "RwSHOP" # Diff-Shop for groceries(no data for wave 1,2 but good for wave 3 to 16) p964 [catgeorical variable
 ] ## Any functional limitations
 
 medicalConds = [

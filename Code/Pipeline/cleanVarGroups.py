@@ -88,14 +88,42 @@ class hrsSet:
         print(self.Wave[allOccs].head(10))
 
         ## Take the most common occupation grouping across all waves as the final occupation
-        self.Wave["RwJOCCSD"] = self.Wave[allOccs].apply(lambda x: x.mode() if not x.mode().empty else np.nan, 
-                                                         axis=1)  
-        print(self.Wave["RwJOCCSD"].head(10))      
-        # ## Drop the old occupation columns if they exist
+        self.Wave["RwJOCCSD"] = self.Wave[allOccs].apply(lambda x: x.mode()[0] if not x.mode().empty else np.nan, 
+                                                         axis=1) 
+        # print(self.Wave["RwJOCCSD"].head(10))      
+        # # ## Drop the old occupation columns if they exist
         self.Wave.drop(columns=allOccs, inplace=True)
                 
         return None
+
+    def combineColumns(self, newColName, colList, method = "all"):
+        """
+        Combine multiple columns into a single column by taking OR or AND operation.
         
+        Parameters:
+        newColName (str): The name of the new column to be created.
+        colList (list): A list of column names to be combined.
+        """
+        if method not in ["all", "any"]:
+            raise ValueError("Method must be 'all' or 'any'.")
+        elif method == "all":
+            self.Wave[newColName] = self.Wave[colList].all(axis=1)
+        else:
+            self.Wave[newColName] = self.Wave[colList].any(axis=1)
+        return None
+    
+    def extractNonNull(self, how):
+        """
+        Extract individuals with non-null cognition variables, RwTR20 and ReMSTOT, or non-null cognitive impairement
+        For individyuals with part of their cognitive status null,  
+        It imputes missing values with forward fill and back fill
+        
+        Returns: none
+        Mutate: self.Wave
+        """
+        self.Wave.dropna(subset=['RwTR20', 'RwMSTOT', "RwLOST", "RwWANDER", "RwALONE", "RwHALUC"], how = how)
+        
+
     def dealNAs(self, varList, fillValue=0):
         """
         Deal with missing values in the specified variables.
