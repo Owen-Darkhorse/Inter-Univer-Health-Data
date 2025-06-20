@@ -96,7 +96,7 @@ class hrsSet:
                 
         return None
 
-    def combineColumns(self, newColName, colList, method = "all"):
+    def combineColumns(self, newColName, colList, method = "all", combFunc = None):
         """
         Combine multiple columns into a single column by taking OR or AND operation.
         
@@ -104,12 +104,16 @@ class hrsSet:
         newColName (str): The name of the new column to be created.
         colList (list): A list of column names to be combined.
         """
-        if method not in ["all", "any"]:
-            raise ValueError("Method must be 'all' or 'any'.")
+        if (method not in ["all", "any"]) and (combFunc is None):
+            raise ValueError("Method is not 'all' or 'any', or combFunc is None.")
         elif method == "all":
             self.Wave[newColName] = self.Wave[colList].all(axis=1)
-        else:
+        elif method == "any":
             self.Wave[newColName] = self.Wave[colList].any(axis=1)
+        else:
+            self.Wave[newColName] = self.Wave[colList].apply(combFunc, axis = 0)
+        
+        self.Wave.drop(columns = colList, inplace = True)
         return None
     
     def extractNonNull(self, how):
@@ -121,7 +125,11 @@ class hrsSet:
         Returns: none
         Mutate: self.Wave
         """
-        self.Wave.dropna(subset=['RwTR20', 'RwMSTOT', "RwLOST", "RwWANDER", "RwALONE", "RwHALUC"], how = how)
+        non_null_response = (
+            self.Wave[['RwTR20', 'RwMSTOT']].notnull().all(axis=1) |
+            self.Wave[["RwLOST", "RwWANDER", "RwALONE", "RwHALUC"]].notnull().all(axis=1)
+        )
+        self.Wave = self.Wave[non_null_response]
         
 
     def dealNAs(self, varList, fillValue=0):
@@ -132,9 +140,8 @@ class hrsSet:
         varList (list): A list of variable names to handle missing values for.
         fillValue: The value to fill in for missing values. Default is 0.
         """
-        for var in varList:
-            if var in self.Wave.columns:
-                self.Wave[var].fillna(fillValue, inplace=True)
+        self.Wave.fillna(method='ffill', axis = 0, inplace = True)
+        self.Wave.fillna(method='bfill', axis = 0, inplace = True)
         
         return None
     
