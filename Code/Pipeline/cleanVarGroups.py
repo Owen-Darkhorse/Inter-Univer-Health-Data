@@ -103,6 +103,11 @@ class hrsSet:
         Parameters:
         newColName (str): The name of the new column to be created.
         colList (list): A list of column names to be combined.
+        method: a str, "all" or "any"
+        combFunc: a lambda function to be applied to every row of colList
+
+        Note:
+        Only one of method and combFunc should be non null
         """
         if (method not in ["all", "any"]) and (combFunc is None):
             raise ValueError("Method is not 'all' or 'any', or combFunc is None.")
