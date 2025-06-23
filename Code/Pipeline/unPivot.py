@@ -16,16 +16,16 @@ def unpivotMetric(df, metricName, idCol="HHIDPN"):
     Returns:
     DataFrame: The unpivoted DataFrame.
     """
-    metricName = re.sub(r"([A-Z])w", r"\1\\d+", metricName)
+    metricRe = re.sub(r"([A-Z])w", r"\1\\d+", metricName) + "$"
     idx = df.filter(items = ["HHIDPN"])
-    df = df.filter(regex = metricName+"$")
+    df = df.filter(regex = metricRe)
     df = pd.concat([idx, df], axis=1)
     # print(df.columns[1:])
 
-    valueNames = df.columns[df.columns.str.contains(metricName)].to_list()
-    metricNewName = re.sub(r"([A-Z])\d+", "\\1w", metricName)
+    valueNames = df.columns[df.columns.str.contains(metricRe)].to_list()
+    # metricNewName = re.sub(r"([A-Z])\d+", "\\1w", metricName)
     df = df.melt(id_vars=[idCol], value_vars=valueNames, 
-                 var_name="Wave", value_name=metricNewName)
+                 var_name="Wave", value_name=metricName)
     
     df["Wave"] = df["Wave"].str.extract(r'(\d+)').astype(int)  # Extract the wave number from the column name
     df[idCol] = df[idCol].astype(int)
