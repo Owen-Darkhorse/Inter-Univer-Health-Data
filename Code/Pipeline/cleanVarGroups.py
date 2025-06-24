@@ -32,7 +32,7 @@ class hrsSet:
         """
         for var in ageVars:
             if var in self.Wave.columns:
-                self.Wave[var] = (self.Wave[var] - 65) / 12   
+                self.Wave[var] = self.Wave[var] / 12   
         return None
     
     def discretize(self, mapper, varList):
