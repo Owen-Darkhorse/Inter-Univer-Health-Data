@@ -1,0 +1,144 @@
+---
+title: "Statistical Method"
+author: "250539-PCA-Next-Step"
+date: "2025-06-25"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\section{Method}
+
+\subsection{Preprocessing}
+
+The raw longitudinal data file was saved as SAS file in wide format, consisting of 45234 rows and 19880 columns. Each row represents information of a person collected in different waves. We select a subset of subjects based on following rules, 1) non-empty recall and mental scores, 2) persons whose ages are at least 50 years.The filtering reduces 45234 subjects to 28445 subjects. Conversion to long format reduces 19880 columns to 54 columns, making the data compatible with visualization functions and statistical models.
+
+In conversion to the long format, variables of the same kind were matched using regex and stacked against the wave number. The resulting dataset identifies a record of a person collected in a particular wave by its household-person ID and wave number. For variates not specific to any wave such as gender, race, and education years, these variables are stored in a separate dataset that identifies solely by household and person IDs.
+
+Basic preprocessing techniques are applied to long data. This includes transforming financial variables such as earnings, savings, debts into log10 scale to reduce skewness. Combining levels in categorical variables. For example, the number of siblings and children ever born range from 0 to 14, these values were divided into bins: [0,3], [4,8], [9,14]. Workplace stress such as physical effort initially had 5 levels, from never to always, these levels were simplified into 0 and 1, representing low and high intensity. For doctor-diagnosed medical conditions, 6 possible levels were simplified into 0 and 1, representing any medical record of the disease.
+
+4 cognitive impairments, lost, wander, alone, and hallucination (all binary), were combined into 1 column by taking the union. In other words, a subject is deemed to be cognitively impaired if any of the four impairments is true.
+
+Occupations were encoded in 1980, 2000, 2010 census codes. As census codes shifted in 1994, 2007 and 2010, this created redundant columns and complex job categories. To simplify the occupation codes, unique occupation codes were pooled together and regrouped by Perplexity AI. A Python dictionary that maps census codes to the standardized code were created to automate occupation code standardization for each record. This simplifies 77 codes into 8 codes. For example, census codes that contain "managerial," "clerical," "official," "business," and "financial" were mapped to "Management/Clerical/Business." Codes with "armed forces," "protective services," "military" were mapped to "High Risk Occupations" as these occupation are exposed to safety risks. Jobs with terms like "computer"，"math," "engineering," "legal" require professional education and were renamed as "STEM/Professional/Technical". For individuals who indicated not working for pay, their occupations were NAs and would be filled with "Retired."
+
+Finally, columns with over 60% of missing values will be dropped out, as severe missingness compromises valid inference. For columns with only 10-20% missing values, NAs were filled by non-null values forward and backward because records in temporal adjacency tend to be close to one another.
+
+During the exploratory analysis stage, plot the median and mean cognitive scores of a subset of the sample against age and occupation provides intuitions of factors of cognitive decline. As the goal is to identify occupations that alleviate cognitive decline the most, comparing the effect of occupations against retirement over time and determining the statistical significance are necessary. Therefore, we will build a statistical model for the longitudinal data to quantify effects and test hypotheses whether certain occupations effectively preserves cognitive abilities.
+
+\subsubsection{Theoretical Framework: Generalized Estimating Equation (GEE)}
+We can assume that reference persons from different households are independent, but each subject were measured for their recall, mental status, and cognitive impairment indicator across waves. These repeated measurements within subjects are correlated. Additionally, response variables are integers between 0 and 20; in particular, the distribution of mental status is left skewed (figure ...), while the cognitive impairment indicator is binary valued. This implies that the ordinary least squares (OLS) no longer apply as normality and independence assumptions are violated. Although recall scores are distributed in a bell-shape, but a model that allows skewed data is essential to make the inference on recall scores comparable to mental scores. Furthermore, (Figure ...) shows that recall and mental state are non-linearly correlated with age as the rate of decline accelerates after 70 years of age. As the true data-generating process is unknown, model misspecification could cause invalid inference. These issues motivate the application of GEE.
+
+Let $Y_{ij}$ be the response variable (i.e, recall and mental scores over the maximum of 20 or 15) of i-th subject at the j-th measurement， where $1 \leq i \leq n$, and $1 \leq j \leq k_i$. And let $\bf x_{ij}$ be the independent variable of the i-th subject at the j-th measurement, consisting of p predictors. To model the marginal mean $\mu_{ij} = E(Y_{ij})$, we impose a few assumptions:
+
+\begin{enumerate}
+    \item $Y_{ij} \sim Binomial(p_{ij}, m)$ is the random component of the model, where m is the full mark, and $p_{ij}$ is the overall percentage of points gained in a cognitive test.
+    \item The systematic or linear component is $\eta_{ij} = \mathbf{x_{ij}}^T \beta$, where $\beta$ is a vector of unkown parameters，representing the effect contributed by each variable.
+    \item The link function $\eta_{ij} = g(\p_{ij}) = \mathbf{x_{ij}}^T \beta$ maps score percentage between 0 and 1 to a set of real numbers, a linear regression will be fitted against the transformed response.
+    \item $Var(Y_i) = a(\phi) V(\mu_i)$ captures the covariance structure within the i-th subject. $a(\phi)$ is a function of scaling parameter $\phi$ parameter $\phi$, and $V(\mu_i)$ is variance function with respect to the mean vector $\mu_i$.
+\end{enumerate}
+
+$Y_{ij}$ can viewed as the number of correct answers out of m questions. Let $Y_{ij} = m Z_{ij}$, then $Z_{ij}$ is the proportion of correct answers. The distribution function of $Z_{ij}$ is:
+
+$$
+f(y_{ij}; p_{ij}) = {m \choose y_{ij}}p_{ij}^{y_{ij}}  (1-p_{ij})^{m-y_{ij}}
+$$
+$$
+f(z_{ij}; p_{ij}) = {m \choose m z_{ij}} p_{ij}^{m z_{ij}}  (1-p_{ij})^{m-m z_{ij}}
+$$
+
+To be written in the general form of exponential family is
+\begin{align*}
+  f(z_{ij}; p_{ij}) & =
+\exp\{ \frac{z \theta - b(\theta)}{a(\phi)} + c(z; \phi)\}\\
+ & =\exp\{m \{z_{ij}log(\frac{p_{ij}}{1-p_{ij}}) + log(1- p_{ij})\} + log{m \choose m z_{ij}} \}
+\end{align*}
+
+
+Denote the $\theta_{ij} = log(\frac{p_{ij}}{1-p_{ij}})$ (the logit function) to be the canonical parameter, then $p_{ij} = expit(\theta_{ij}) = \frac{e^{\theta_{ij}}}{1 + e^{\theta_{ij}}}$. Matching the rest of parts, $a(\phi) = 1/m$, and $b(\theta) = -log(1- p_{ij}) = log(1 + e^{\theta_{ij}})$, $c(y_{ij}; \phi) = log{m \choose y_{ij}}$. By properties of exponential family distributions, the marginal mean of $Y_{ij}$ is $\mu_{ij} = m \mathbb{E}[Z_{ij}] = b'(\theta_{ij}) = m * \frac{e^{\theta_{ij}}}{1 + e^{\theta_{ij}}}$. The logit canonical link function connects this with the linear predictor, $g(p_{ij}) = log(\frac{p_{ij}}{1 - p_{ij}}) = {\bf x_{ij}}^T \beta$.
+
+In this study, we consider a base model and a full model and find the optimal model in between that captures significant pattern with least amount of variables. The base model contains only two main effects and an interaction between primary variables.
+
+$$
+g(p_{ij}) = \beta_0 + \beta_{age} t_{ij} + c_{ij}^T \beta_{occ} + \beta_{interac} t_{ij} * x_{ij}^T 
+$$
+
+$\beta_0$ is the intercept of the model, representing the log ratio of score gained to the score lost. When all variables are 0. $t_{ij}$ represents age in years, and $\beta_{age}$ is the change in the score gained to the score lost in a cogitive test for every year change in age. $c_{ij}^T$ represents binary encoding of occupations, with "Retired" held as the baseline. $\beta_{occ}$ is a vector of the same length as $c_{ij}^T$, with j-th element representing the difference between the j-th career to retirement in in the log score ratio, if all other variables are fixed. The interaction effect \beta_{interac} represents an additional change in the log score ratio when both $t_{ij}$, $x_{ij}^T$ change simultaneouly.
+
+
+The full model contains all control variables:
+\begin{align}
+    g(p_{ij}) &= \beta_0 + \beta_{age} t_{ij} + c_{ij}^T \beta_{occ} + \beta_{interac} t_{ij} * x_{ij}^T \\
+  & + w_{ij}^T \beta_{work} + d_{ij}^T \beta_{demo} + m_{ij}^T \beta_{medic}\\
+  & + h_{ij}^T \beta_{health} + f_{ij}^T \beta_{func}
+\end{align}
+
+$w_{ij}^T$ encodes workplace related stress, such as physical effort, eyesight, kneeling and stooping. $d_{ij}^T$ represents demographics such as gender and race. $m_{ij}^T$ are medical conditions such as heart and lung diseases. $h_{ij}^T$ are health behaviours, and $f_{ij}^T$ are functional limitations.
+
+The variance structure should also be specified. Under binomial distribution, the variance model for single $Y_ij$ is $Var(Y_{ij}) = m p_{ij} (1-p_{ij}) = \phi V(\mu_{ij})$. The mean-variance function is $V(\mu_{ij}) = \mu_{ij} (1 - \mu_{ij})$. For longitudinal data,  ${\bf Y_i} = (Y_{i1}, Y_{i2}, ..., Y_{ik_i})$ are correlated, and we will compare performance of 3 correlation matrices $V(\bf \rho)$ in the modeling step:. 
+
+1. Exchangeable: every pair of response in the same subject are equally correlated.
+2. AR(1): correlations between responses decays with time
+3. Independence: the correlation matrix is diagonal, meaning that previous observations do not influence the latter.
+
+Finally, the working covariance matrix of $Y_i$ takes the form:
+$$
+\Sigma_i(\beta, \phi, \rho) = \phi \times \bf A_i^{1/2} V(\rho) A_i^{1/2}
+$$
+where $V(\rho)$ is the correlation matrix of our choice, and $A_i^{1/2} = diag\{V(u_{i1}, V(u_{i2}, ..., V(u_{ik_i}) \}$, the standard deviation of each single measurement of the response.
+
+To accomodate model mispecification, robust estimators of $\beta$ and its covariance will be applied to stabilize covariance structure and maintain validity of inference.
+
+\subsection{Parameter Estimation and Model Selection}
+Estimation of parameters is by finding the $\beta$ that maximizes log likelihood: $max \{l(\mathbf{\theta}) = \sum_{i=1}^n log f(Y_i)\}$. This involves finding the $\beta$ that sets the score function (derivative of log likelihood) to 0. In general, the score function is represented as
+
+$$
+S(\beta) = \sum_{i=1}^n D_i^T \Sigma_i^{-1} (Y_i - \mu_i(\beta)) = 0
+$$
+where $D_i = \frac{\partial \mu_i(\beta)}{\partial \beta^T}$, and $\Sigma_i = \phi \times \bf A_i^{1/2} V(\rho) A_i^{1/2}$. The basic principle of estimation is two-stage and iterative. At each iteration, the algorithm will start with an initial $\hat{\beta}$, update $\hat \phi, \hat \rho, V(\mu_i(\hat \beta))$ accordingly, and update $\hat{\beta}$ using Fisher Scoring Method. The cycle repeats until convergence is achieved.
+
+Model simplicity is crucial to make model interpretable and generalizable. As the likelihood of GEE is not the true likelihood, Quasi Information Criterion (QIC) is analogous to Akaike Information Criterion (AIC) for evaluating goodness of fit. We select the optimal model based on Quasi Information Criterion (QIC).
+
+1. Fit the base model that contains only age, occupations and their interactions.
+
+2. Apply forward feature selection on base models to incorporate mediator variables.
+  - At each step, all candidate variables will be calculated for their  QIC if added.
+  - QIC will be sorted, the variable with the smallest QIC will be added to the current model.
+  - Continue adding control variables until the max iteration is reached or QIC descrease in below a pre-set threshold.
+3. Interpret coefficient estimates and test hypotheses in the optimal model.
+
+To cross check the optimal set of features, we can also fit a full model with all primary and control variables, and recursively eliminate variables based on LR test. By doing this, we were able to yield the model with least amount of variables but captures the most significant pattern in the dataset.
+
+To avoid data leakage that yields overly optimistic results, the data were shuffled into training and testing set. Visualization, variable selection and model interpretation were performed on the traing set, and prediction accuracies were calculated on the test set. Compare optimal models that use different covariance structures and select the one with the smallest error rate. Finally, refit the optimal model on the entire dataset and perform hypothesis testing.  
+
+
+\subsubsection{Hypothesis Testing}
+
+Consider following null hypotheses:
+
+\begin{enumerate}
+  \item $H_1: {\vec \beta_{interac}} = 0$: do any post-retirement occupations change the rate of the cognitive decline?
+  \item $H_2: {\vec \beta_{occ}} = 0$: do any post-retirement occupations create any overall effect on the average cognitive abilities?
+  \item $H_3: \bf \beta_{stem} - \frac{\sum_{-stem} \beta_{j}}{K-1}= 0$: do specialties in STEM/Professional/Technical perform better than the rest of K-1 occupations on average?
+  \item $H_4: \bf \beta_{mgmt} - \frac{\sum_{-mgmt} \beta_{j}}{K-1}= 0$: do specialties in Management/Clerical/Business perform better than the rest of K-1 occupations on average?
+  \item $H_5: \bf \beta_{food} - \frac{\sum_{-food} \beta_{j}}{K-1}= 0$: do specialties in Food/Personal/Service perform worse than the rest of K occupations on average?
+  \item $H_6: \bf \beta_{farm} - \frac{\sum_{j=1} \beta_{j}}{K-1}= 0$: do specialties in Farming/Forestry/Fishing perform worse than the rest of K occupations on average?
+\end{enumerate}
+
+Recall that $\beta \in R^p$ be the parameter vector of every effects in the full model. Hypotheses listed above can be expressed as matrix-vector equations of the form $\bf L \beta = 0$. For $H_1$, L is a matrix with K rows (corresponding to remaining K occupations, here K=7) and p columns, with 0's everywhere and 1's at columns that correspond to the k-th job's interaction with age.  $H_1$ is likewise except with interactions effects replaced with main effects. For $H_3$ to $H_6$, L's are row vectors with a 1 at the entry of the assumed top performing occupations, -1/K's at the rest of occupations, and 0 at the rest of parameter entries. 
+
+Testing these hypotheses uses generalized Wald-statistics:
+$$
+W = (L\tilde{\beta_R})^T (LCov(\tilde{\beta_R})L^T)^{-1} L\tilde{\beta_R}
+$$
+With a large enough sample size, W asymptotically follows $\chi^2(r)$ distribution, where r is the rank of L. When values of $\tilde{\beta_R}$ and its covariance are realized, denote the realized W value by w, then $p-value = P(\chi^2(r) > w)$. An effect is significant if the p-value is less than 0.05.
+
+Notice that tests are not independent of another, to control false discovery rate, we will apply Benjamin-Hotchberg correction with the decision bound changed under dependence. [More details here]
+
+\section{Appendix}
+
+\subsection{Regex Variable Selection}
+The same metric collected from different years are represented as a group of adjacent columns in "$(H|R|S)\backslash{}d+$VarName" format using regular expression (regex). Variable names always begin with a letter, H for household, R for reference person, and S for spouse. "$\backslash{}d+$" stands for the wave number, and "VarName" is the variable of interest. 
+
+

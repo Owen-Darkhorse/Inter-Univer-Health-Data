@@ -113,8 +113,8 @@ occupation_2010 = {
     23: "Military Specific Occs"
 }
 
-# Standardized occupation groups across different census years
-codeToGroup = {
+# Standardized occupation groups across different census years (sorted descending by key)
+codeToGroup = dict(sorted({
     'Managerial specialty ope':'Management/Clerical/Business',
     'Clerical/admin supp':'Management/Clerical/Business',
     'Managers/officials/propr':'Management/Clerical/Business',
@@ -183,4 +183,4 @@ codeToGroup = {
     'Community+Social Service':'STEM/Professional/Technical',
     'Legal Occs':'STEM/Professional/Technical',
     'Arts/Design/Entertainmen':'STEM/Professional/Technical'
-}
+}.items(), reverse=True))

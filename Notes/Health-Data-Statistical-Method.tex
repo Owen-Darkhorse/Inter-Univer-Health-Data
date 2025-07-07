@@ -1,0 +1,132 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Statistical Method},
+  pdfauthor={250539-PCA-Next-Step},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Statistical Method}
+\author{250539-PCA-Next-Step}
+\date{2025-06-25}
+
+\begin{document}
+\maketitle
+
+During the exploratory analysis stage, plot the median and mean
+cognitive scores of a subset of the sample against age and occupation
+provides intuitions of factors of cognitive decline. As the goal is to
+identify occupations that alleviate cognitive decline the most,
+comparing the effect of occupations against retirement over time and
+determining the statistical significance are necessary. Therefore, we
+will build a statistical model for the longitudinal data to quantify
+effects and test hypotheses whether certain occupations effectively
+preserves cognitive abilities.
+
+\subsubsection{Generalized Estimating Equation (GEE)}
+
+We can assume that reference persons from different households are
+independent, but each subject were measured for their recall, mental
+status, and cognitive impairment indicator across waves. These repeated
+measurements within subjects are correlated. Additionally, response
+variables are integer valued; in particular, the distribution of mental
+status is left skewed (figure \ldots), while the cognitive impairment
+indicator is binary valued. This implies that the ordinary least squares
+(OLS) no longer apply as normality and independence assumptions are
+violated. Furthermore, (Figure \ldots) shows that recall and mental
+state are non-linearly correlated with age as the rate of decline
+accelerates after 70 years of age. As the true data-generating process
+is unknown, model misspecification could cause invalid inference. These
+issues motivate the application of GEE.
+
+Let \(Y_{ij}\) be the response variable (i.e, recall and mental scores)
+of i-th subject at the j-th measurement， where \(1 \leq i \leq n\), and
+\(1 \leq j \leq k_i\). And let \(\bf x_{ij}\) be the independent
+variable of the i-th subject at the j-th measurement. To model the
+marginal mean \(\mu_{ij} = E(Y_{ij})\), we impose a few assumptions:
+
+\begin{enumerate}
+    \item $Y_{ij} \sim Binomial(m, p_{ij})$ is the random component of the model, where $m=20$ for recalls and $m=15$ for mental score, and $p_{ij}$ is the unknown probability of gaining 1 more point in the exam.
+    \item The systematic or linear component is $\eta_{ij} = \mathbf{x_{ij}}^T \beta$, where $\beta$ is a vector of unkown parameters，representing the effect contributed by each variable.
+    \item The link function $\eta_{ij} = g(\mu_{ij}) = \mathbf{x_{ij}}^T \beta$ maps the expectations of $Y_{ij}$ between 0 and 20 to a set of real numbers, a linear regression will be fitted against the transformed response.
+    \item $Var(Y_i) = a(\phi) V(\mu_i)$ captures the covariance structure within the i-th subject. $a(\phi)$ is a function of scaling parameter $\phi$ parameter $\phi$, and $V(\mu_i)$ is variance function with respect to the mean vector $\mu_i$.
+\end{enumerate}
+
+By assumptions above, the distribution function of \(Y_{ij}\) is:
+
+\[
+f(y_{ij}; p_{ij}) = {m \choose y_{ij}} p_{ij}^{p_{ij}}  (1-p_{ij})^{m-y_{ij}}
+\] To be written in the general form of exponential family is
+
+\$\$ f(y\_\{ij\}; p\_\{ij\}) = \exp\{
+\frac{y \theta - b(\theta)}{a(\phi)} + c(y; \phi)\}
+
+=\exp\{ylog(\frac{p_{ij}}{1-p_{ij}}) + mlog(1- p\_\{ij\}) + log\{m
+\choose y\_\{ij\}\} \} \$\$ Denote the
+\(\theta_{ij} = log(\frac{p_{ij}}{1-p_{ij}})\) (the logit function) to
+be the canonical parameter, then
+\(p_{ij} = expit(\theta_{ij}) = \frac{e^{\theta_{ij}}}{1 + e^{\theta_{ij}}}\).
+Matching the rest of parts, \(a(\phi) = 1\), and
+\(b(\theta) = -mlog(1- p_{ij}) = m*log(1 + e^{\theta_{ij}})\),
+\(c(y_{ij}; \phi) = log{m \choose y_{ij}}\).
+
+\end{document}
