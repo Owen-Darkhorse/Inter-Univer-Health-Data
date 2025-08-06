@@ -20,12 +20,11 @@ This repository is organized as follows:
 
 | Directory | Description |
 | :--- | :--- |
+|[Data][Data]| This folder contains cleaned and imputed data for training GEE model. The raw data is not uploaded due to large file size.|
 | [Code](Code) | This folder contains data manipulation Python scripts in `\Pipeline` subfolder, Jupyter notebooks for EDA and modelling, and R markdown for final GEE modelling.|
 | [Images](Images) | This folder contains all images generated in EDA and modelling stage
 | [Notes](Notes) | This folder contains importanmt meeting notes and manuscript drafts. |
 | [Proposal](Proposal) | This folder contains the research proposal. |
-
-Due to large file size, `\Data` is not uploaded.
 
 ## How to Clone
 
