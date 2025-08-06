@@ -187,8 +187,10 @@ createCI <- function(smryTable, modelCov) {
   occEffectIdx <- startsWith(rownames(smryTable$coefficients), "RwJOCCSD")
   occEffectEst <- smryTable$coefficients[occEffectIdx, "Estimate"]
   occEffectSD <- diag(modelCov)[occEffectIdx] %>% sqrt()
-  occEffectNames <- c("Farming/Forestry/Fishing", "Food/Personal Service", 
-                      "Healthcare","High Risk Occupations", 
+  occEffectNames <- c("Farming/Forestry/Fishing", 
+                      "Food/Personal Service", 
+                      "Healthcare",
+                      "Protective Armed Forces", 
                       "Management/Clerical/Business","Sales", 
                       "Skilled Trades/Production/Manual",
                       "STEM/Professional/Technical")
@@ -206,132 +208,110 @@ createCI <- function(smryTable, modelCov) {
 recallCI <- createCI(bestRecallSmry, bestRecallCov)
 mentalCI <- createCI(bestMentalSmry, bestMentalCov)
 totalCI <- rbind(recallCI, mentalCI)
-totalCI$Response <- rep(c("Recall", "Mental Status"), each = 8)
+totalCI$Score <- rep(c("Recall", "Mental Status"), each = 8)
 
-createForest <- function(){
-  
+
+# Forest plot
+createForest <- function(ciTable){
+  ggplot(ciTable, aes(x = Estimate, y = Occupation, 
+                      group = Score, color = Score)) +
+    geom_point(size = 3, position=position_dodge(0.5)) + 
+    geom_errorbarh(aes(xmin = Low, xmax = High), height = 0.2,
+                   position=position_dodge(0.5)) +
+    geom_vline(xintercept = 1, linetype = "dashed") +
+    geom_text(aes(x = 0.9, y = Occupation,
+                  label = sprintf("%.2f (%.2f, %.2f)", Estimate, Low, High),
+                  group = Score),
+              hjust = -0.5, size = 3.5,
+              position = position_dodge(0.7)) +
+    scale_x_continuous(labels = scales::percent, limits = c(0.98, 1.12), 
+                       expand = expansion(mult = c(0, 0.1))) +
+    scale_y_discrete(labels = ~ str_wrap(gsub('/', ' ', .x), 15))+
+    labs(
+      x = "Percent of Retirees' Performance (95% CI)",
+      y = "Occupation Groups",
+      title = "Post-Retirement Workers' Cognitive Performance",
+    ) +
+    coord_cartesian(xlim = c(0.9, 1.2)) + 
+    theme(axis.text.y = element_text(hjust = 1, size = 8, face = "bold"),
+          plot.title = element_text(hjust = 0.5, size = 15, 
+                                    family = "serif", face = "bold"),
+          axis.title.y = element_blank(),
+          legend.position = "inside",
+          legend.position.inside = c(0.9,0.5))
 }
 
-# Forest plot
+createForest(totalCI)
+
 ggplot(totalCI, aes(x = Estimate, y = Occupation, 
-                    group = Response, color = Response)) +
-  geom_point(size = 4, position=position_dodge(0.5)) + 
+                    group = Score, color = Score)) +
+  geom_point(size = 3, position=position_dodge(0.5)) + 
   geom_errorbarh(aes(xmin = Low, xmax = High), height = 0.2,
                  position=position_dodge(0.5)) +
-  geom_vline(xintercept = 1, linetype = "dashed", color = "gray50") +
-  # geom_text(aes(label = sprintf("%.2f (%.2f, %.2f)", Estimate, Low, High)), 
-  #           x = 0.9, hjust = 0, size = 3.5) +
-  scale_x_continuous(limits = c(0.98, 1.12), expand = expansion(mult = c(0, 0.1))) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  geom_text(aes(x = 0.9, y = Occupation,
+                label = sprintf("%.2f (%.2f, %.2f)", Estimate, Low, High),
+                group = Score),
+            hjust = -0.5, size = 3.5,
+            position = position_dodge(0.7)) +
+  scale_x_continuous(labels = scales::percent, limits = c(0.98, 1.12), 
+                     expand = expansion(mult = c(0, 0.1))) +
+  scale_y_discrete(labels = ~ str_wrap(gsub('/', ' ', .x), 15))+
   labs(
-    x = "Effect Estimate (95% CI)",
-    y = "Occupation Group",
-    title = "Recall Scores Ratios, Occupation-specific vs Retirement Recall Scores"
+    x = "Percent of Retirees' Performance (95% CI)",
+    y = "Occupation Groups",
+    title = "Post-Retirement Workers' Cognitive Performance",
   ) +
-  coord_cartesian(xlim = c(0.9, 1.15)) + 
-  theme(
-    axis.text.y = element_text(hjust = 1),
-    plot.title = element_text(hjust = 0.5, size = 15),
-    axis.title.y = element_blank(),
-    legend.position = "inside",
-    legend.position.inside = c(0.8,0.5)
-  )
-  
-
-###### Confidence Interval for occupation-specific #############################
-occEffectIdx <- startsWith(rownames(bestMentalSmry$coefficients), "RwJOCCSD")
-occEffectEst <- bestMentalSmry$coefficients[occEffectIdx, "Estimate"]
-occEffectSD <- diag(bestRecallCov)[occEffectIdx] %>% sqrt()
-occEffectNames <- c("Farming/Forestry/Fishing", "Food/Personal Service", 
-                    "Healthcare","High Risk Occupations", 
-                    "Management/Clerical/Business","Sales", 
-                    "Skilled Trades/Production/Manual",
-                    "STEM/Professional/Technical")
-
-linearCI_low <- occEffectEst - 1.96 * occEffectSD
-linearCI_up <- occEffectEst + 1.96 * occEffectSD
-
-occEffectCI <- cbind(linearCI_low, occEffectEst, linearCI_up) %>% exp()
-colnames(occEffectCI) <- c("Low", "Estimate", "High")
-occEffectCI <- as.data.frame(occEffectCI)
-occEffectCI$Occupation <- occEffectNames
-
-
-# Forest plot
-ggplot(occEffectCI, aes(x = Estimate, y = Occupation)) +
-  geom_point(size = 3, color = "#0072B2") +
-  geom_errorbarh(aes(xmin = Low, xmax = High), height = 0.2, color = "#0072B2") +
-  geom_vline(xintercept = 1, linetype = "dashed", color = "gray50") +
-  geom_text(aes(label = sprintf("%.2f (%.2f, %.2f)", Estimate, Low, High)), 
-            x = 0.9, hjust = 0, size = 3.5) +
-  scale_x_continuous(limits = c(0.98, 1.12), expand = expansion(mult = c(0, 0.1))) +
-  labs(
-    x = "Effect Estimate (95% CI)",
-    y = "Occupation Group",
-    title = "Mental Scores Ratios, Occupation-specific vs Retirement Recall Scores"
-  ) +
-  coord_cartesian(xlim = c(0.9, 1.15)) + 
-  theme(
-    axis.text.y = element_text(hjust = 1),
-    plot.title = element_text(hjust = 0.5, size = 15),
-    axis.title.y = element_blank()
-  )
-  
-
-
-
-
-
+  coord_cartesian(xlim = c(0.9, 1.2)) + 
+  theme(axis.text.y = element_text(hjust = 1, size = 8, face = "bold"),
+        plot.title = element_text(hjust = 0.5, size = 15, 
+                                  family = "serif", face = "bold"),
+        axis.title.y = element_blank(),
+        legend.position = "inside",
+        legend.position.inside = c(0.9,0.5))
 
 
 ###### Confidence Interval: any occupation-specific rate change ############
-interacFit <- update(bestFit, RwTR20~.+RwAGEM_B:RwJOCCSD)
+interacRecallFit <- update(bestRecallFit, RwTR20~.+RwAGEM_B:RwJOCCSD)
+interacMentalFit <- update(bestMentalFit, RwMSTOT~.+RwAGEM_B:RwJOCCSD)
 
-interacSmry <- summary(interacFit)
-interacCov <- vcov(interacFit)
-occInteracIdx <- startsWith(rownames(interacSmry$coefficients), "RwAGEM_B:RwJOCCSD")
-occInteracEst <- interacSmry$coefficients[occInteracIdx, "Estimate"]
-occInteracSD <- diag(interacCov)[occInteracIdx] %>% sqrt()
-occInteracNames <- c("Farming/Forestry/Fishing", "Food/Personal Service", "Healthcare",
-                    "High Risk Occupations", "Management/Clerical/Business",
-                    "Sales", "Skilled Trades/Production/Manual", "STEM/Professional/Technical")
+interacRecallSmry <- summary(interacRecallFit)
+interacMentalSmry <- summary(interacMentalFit)
 
-linearCI_low <- occInteracEst - 1.96 * occInteracSD
-linearCI_up <- occInteracEst + 1.96 * occInteracSD
+interacRecallCov <- vcov(interacRecallFit)
+interacMentalCov <- vcov(interacMentalFit)
 
-occInteracCI <- cbind(linearCI_low, occInteracEst, linearCI_up) %>% exp()
-colnames(occInteracCI) <- c("Low", "Estimate", "High")
-occInteracCI <- as.data.frame(occInteracCI)
-occInteracCI$Occupation <- occInteracNames
 
-ggplot(occInteracCI, aes(x = Estimate, y = Occupation)) +
-  geom_point(size = 3, color = "#0072B2") +
-  geom_errorbarh(aes(xmin = Low, xmax = High), height = 0.2, color = "#0072B2") +
-  geom_vline(xintercept = 1, linetype = "dashed", color = "gray50") +
-  geom_text(aes(label = sprintf("%.3f (%.3f, %.3f)", Estimate, Low, High)), 
-            x = 0.95, hjust = 0, size = 3.5) +
-  scale_x_continuous(limits = c(0.98, 1.05), expand = expansion(mult = c(0, 0.1))) +
+interacRecallCI <- createCI(interacRecallSmry, interacRecallCov)
+interacMentalCI <- createCI(interacMentalSmry, interacMentalCov)
+interacTotalCI <- rbind(interacRecallCI, interacMentalCI)
+interacTotalCI$Score <- rep(c("Recall", "Mental Status"), each=8)
+
+# createForest(interacTotalCI)
+
+ggplot(interacTotalCI, aes(x = Estimate, y = Occupation, 
+                    group = Score, color = Score)) +
+  geom_point(size = 3, position=position_dodge(0.5)) + 
+  geom_errorbarh(aes(xmin = Low, xmax = High), height = 0.2,
+                 position=position_dodge(0.5)) +
+  geom_vline(xintercept = 1, linetype = "dashed") + 
+  geom_text(aes(x = 0.6, y = Occupation,
+                label = sprintf("%.2f (%.2f, %.2f)", Estimate, Low, High),
+                group = Score),
+            hjust = 0, size = 3.5, 
+            position = position_dodge(0.7)) +
+  scale_x_continuous(labels = scales::percent, limits = c(0.6, 1.1), 
+                     expand = expansion(mult = c(0, 0.1))) +
+  scale_y_discrete(labels = ~ str_wrap(gsub('/', ' ', .x), 15))+
   labs(
-    x = "Effect Estimate (95% CI)",
-    y = "Occupation Group",
-    title = "Annual Recall Scores Change, Occupation-specific vs Retirement"
+    x = "Percent of Retirees' Performance (95% CI)",
+    y = "Occupation Groups",
+    title = "Post-Retirement Workers' Cognitive Performance",
   ) +
-  coord_cartesian(xlim = c(0.95, 1.025)) + 
-  theme(
-    axis.text.y = element_blank(),
-    plot.title = element_text(hjust = 0.5, size = 15),
-    axis.title.y = element_blank()
-  )
-
-
-###### Evaluate Generalizability on the Test Set ###############
-test <- read.csv("../Data/hrsTest.csv")
-test.y <- test$RwTR20
-count_missing_per_column(test)
-
-test <- model.matrix(fullFormula, test)
-test <- test[,-c(2,8,33)]
-colnames(test) <- colnames(X_design_df)
-test <- as.data.frame(test)
-
-y.pred <- predict(bestFit, newdata = test, type = "response") 
-plot(test.y, y.pred)
+  coord_cartesian(xlim = c(0.6, 1.1)) + 
+  theme(axis.text.y = element_text(hjust = 1, size = 8, face = "bold"),
+        plot.title = element_text(hjust = 0.5, size = 15, 
+                                  family = "serif", face = "bold"),
+        axis.title.y = element_blank(),
+        legend.position = "inside",
+        legend.position.inside = c(0.9,0.4))
